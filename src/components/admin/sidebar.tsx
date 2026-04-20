@@ -1,7 +1,7 @@
 "use client"
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { LayoutDashboard, Package, FolderTree, CreditCard, Users } from 'lucide-react'
 
 const navItems = [
@@ -14,6 +14,8 @@ const navItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currencyQuery = searchParams.get('currency')
 
   return (
     <aside className="w-full border-b border-border/60 bg-white lg:w-64 lg:border-b-0 lg:border-r">
@@ -31,7 +33,7 @@ export function AdminSidebar() {
             return (
               <li key={item.href}>
                 <Link
-                  href={item.href}
+                  href={currencyQuery ? `${item.href}?currency=${currencyQuery}` : item.href}
                   className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'

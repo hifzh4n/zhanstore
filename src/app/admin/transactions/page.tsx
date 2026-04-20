@@ -1,8 +1,13 @@
 import { revalidatePath } from 'next/cache'
+import { AdminCurrencySwitcher } from '@/components/admin/currency-switcher'
 import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getAdminConfigState, getAdminOrders } from '@/lib/admin-dashboard'
+import { formatAdminAmount, getAdminConfigState, getAdminOrders, parseAdminCurrency } from '@/lib/admin-dashboard'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+
+type AdminTransactionsPageProps = {
+  searchParams?: Promise<{ currency?: string }>;
+}
 
 async function updateOrderStatusAction(formData: FormData) {
   'use server'
@@ -34,7 +39,9 @@ async function updateOrderStatusAction(formData: FormData) {
   revalidatePath('/admin')
 }
 
-export default async function AdminTransactionsPage() {
+export default async function AdminTransactionsPage({ searchParams }: AdminTransactionsPageProps) {
+  const params = await searchParams
+  const currency = parseAdminCurrency(params?.currency)
   const config = getAdminConfigState()
   if (!config.ready) {
     return <AdminSetupNotice missingVars={config.missingVars} />
@@ -44,9 +51,12 @@ export default async function AdminTransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">Transactions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Review all orders and manually update payment state when needed.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Transactions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Review all orders and manually update payment state when needed.</p>
+        </div>
+        <AdminCurrencySwitcher currency={currency} />
       </div>
 
       <Card className="border-border/60">
@@ -74,7 +84,7 @@ export default async function AdminTransactionsPage() {
                   <td className="px-2 py-2">{order.customer_name}</td>
                   <td className="px-2 py-2">{order.email}</td>
                   <td className="px-2 py-2 uppercase">{order.source}</td>
-                  <td className="px-2 py-2">{Number(order.total).toFixed(2)} {order.currency}</td>
+                  <td className="px-2 py-2">{formatAdminAmount(Number(order.total), currency)} (Base {order.currency})</td>
                   <td className="px-2 py-2">
                     <span
                       className={`rounded-full px-2 py-1 text-xs font-semibold ${

@@ -1,18 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AdminStatCard } from '@/components/admin/stat-card'
 import { AdminSetupNotice } from '@/components/admin/setup-notice'
-import { getAdminConfigState, getAdminOrders, getAdminSummary } from '@/lib/admin-dashboard'
+import { AdminCurrencySwitcher } from '@/components/admin/currency-switcher'
+import { convertAdminAmount, formatAdminAmount, getAdminConfigState, getAdminOrders, getAdminSummary, parseAdminCurrency } from '@/lib/admin-dashboard'
 
-function formatUsd(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
+type AdminPageProps = {
+  searchParams?: Promise<{ currency?: string }>;
 }
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage({ searchParams }: AdminPageProps) {
+  const params = await searchParams
+  const currency = parseAdminCurrency(params?.currency)
   const config = getAdminConfigState()
   if (!config.ready) {
     return <AdminSetupNotice missingVars={config.missingVars} />
@@ -22,9 +20,12 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Real-time operational view from Supabase PostgreSQL.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Admin Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Real-time operational view from Supabase PostgreSQL.</p>
+        </div>
+        <AdminCurrencySwitcher currency={currency} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -32,7 +33,7 @@ export default async function AdminOverviewPage() {
         <AdminStatCard title="Packages" value={String(summary.packageCount)} hint="Top-up denominations" />
         <AdminStatCard title="Customers" value={String(summary.customerCount)} hint="Supabase auth users" />
         <AdminStatCard title="Transactions" value={String(summary.orderCount)} hint={`${summary.pendingOrders} pending orders`} />
-        <AdminStatCard title="Revenue (USD)" value={formatUsd(summary.paidRevenueUsd)} hint="Paid orders only" />
+        <AdminStatCard title={`Revenue (${currency})`} value={formatAdminAmount(summary.paidRevenueUsd, currency)} hint="Paid orders only" />
       </div>
 
       <Card className="border-border/60">
@@ -69,7 +70,7 @@ export default async function AdminOverviewPage() {
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-2 py-2">{Number(order.total).toFixed(2)}</td>
+                  <td className="px-2 py-2">{convertAdminAmount(Number(order.total), currency).toFixed(2)}</td>
                   <td className="px-2 py-2">{order.currency}</td>
                   <td className="px-2 py-2">{new Date(order.created_at).toLocaleString()}</td>
                 </tr>

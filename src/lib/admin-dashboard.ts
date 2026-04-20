@@ -1,6 +1,14 @@
 import 'server-only'
+import { randomUUID } from 'node:crypto'
 
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+
+export type AdminCurrency = 'USD' | 'MYR'
+
+const ADMIN_CURRENCY_RATE: Record<AdminCurrency, number> = {
+  USD: 1,
+  MYR: 4.7,
+}
 
 export type AdminConfigState = {
   ready: boolean;
@@ -19,6 +27,54 @@ export function getAdminConfigState(): AdminConfigState {
     ready: missingVars.length === 0,
     missingVars,
   }
+}
+
+export function parseAdminCurrency(rawValue: string | undefined): AdminCurrency {
+  return rawValue === 'MYR' ? 'MYR' : 'USD'
+}
+
+export function convertAdminAmount(amountInUsd: number, currency: AdminCurrency): number {
+  return amountInUsd * ADMIN_CURRENCY_RATE[currency]
+}
+
+export function convertAdminAmountToUsd(amountInSelectedCurrency: number, currency: AdminCurrency): number {
+  return amountInSelectedCurrency / ADMIN_CURRENCY_RATE[currency]
+}
+
+export function formatAdminAmount(amountInUsd: number, currency: AdminCurrency): string {
+  return new Intl.NumberFormat(currency === 'MYR' ? 'ms-MY' : 'en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(convertAdminAmount(amountInUsd, currency))
+}
+
+export async function uploadProductImage(file: File, options: { folder: 'banner' | 'icon'; slug: string }) {
+  const supabase = getSupabaseAdminClient()
+
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const path = `${options.folder}/${options.slug}-${randomUUID()}.${extension}`
+  const arrayBuffer = await file.arrayBuffer()
+  const fileBuffer = Buffer.from(arrayBuffer)
+
+  const { error: uploadError } = await supabase.storage
+    .from('product-media')
+    .upload(path, fileBuffer, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    })
+
+  if (uploadError) {
+    throw new Error(uploadError.message)
+  }
+
+  const { data } = supabase.storage.from('product-media').getPublicUrl(path)
+  if (!data.publicUrl) {
+    throw new Error('Unable to generate public URL for uploaded image.')
+  }
+
+  return data.publicUrl
 }
 
 export type AdminSummary = {

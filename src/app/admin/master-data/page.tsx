@@ -1,8 +1,13 @@
 import { revalidatePath } from 'next/cache'
+import { AdminCurrencySwitcher } from '@/components/admin/currency-switcher'
 import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getAdminConfigState, getMasterData } from '@/lib/admin-dashboard'
+import { getAdminConfigState, getMasterData, parseAdminCurrency } from '@/lib/admin-dashboard'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+
+type AdminMasterDataPageProps = {
+  searchParams?: Promise<{ currency?: string }>;
+}
 
 async function createPublisherAction(formData: FormData) {
   'use server'
@@ -70,7 +75,9 @@ async function toggleRegionAction(formData: FormData) {
   revalidatePath('/admin/master-data')
 }
 
-export default async function AdminMasterDataPage() {
+export default async function AdminMasterDataPage({ searchParams }: AdminMasterDataPageProps) {
+  const params = await searchParams
+  const currency = parseAdminCurrency(params?.currency)
   const config = getAdminConfigState()
   if (!config.ready) {
     return <AdminSetupNotice missingVars={config.missingVars} />
@@ -80,9 +87,12 @@ export default async function AdminMasterDataPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">Master Data</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage global publishers and regions used by product catalog.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">Master Data</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage global publishers and regions used by product catalog.</p>
+        </div>
+        <AdminCurrencySwitcher currency={currency} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
