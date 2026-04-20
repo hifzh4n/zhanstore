@@ -9,7 +9,7 @@ import { Footer } from '@/components/footer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useStore } from '@/lib/store'
-import { formatPrice } from '@/lib/currency'
+import { convertUsdToCurrency, formatPrice } from '@/lib/currency'
 import { toast } from 'sonner'
 
 function createExternalId() {
@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const total = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
   const isBuyNowCheckout = Boolean(buyNowItem)
   const [isPaying, setIsPaying] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -53,8 +54,15 @@ export default function CheckoutPage() {
 
     if (paymentStatus === 'failed') {
       updateOrderByExternalId(externalId, { status: 'Failed' })
+      setCheckoutError('Payment was cancelled or failed. Please try again to complete your order.')
       toast.error('Payment was not completed.')
-      router.replace('/checkout')
+      return
+    }
+
+    if (paymentStatus === 'cancelled' || paymentStatus === 'expired') {
+      updateOrderByExternalId(externalId, { status: 'Failed' })
+      setCheckoutError('Payment was cancelled or expired. Please try again to complete your order.')
+      toast.error('Payment was not completed.')
     }
   }, [clearBuyNowItem, clearCart, router, searchParams, updateOrderByExternalId])
 
@@ -78,9 +86,11 @@ export default function CheckoutPage() {
     }
 
     setIsPaying(true)
+    setCheckoutError(null)
 
     try {
       const externalId = createExternalId()
+      const paymentAmount = Number(convertUsdToCurrency(total, currency).toFixed(2))
       const pendingOrder = addOrder({
         items: checkoutItems,
         total,
@@ -98,15 +108,19 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           externalId,
-          amount: total,
+          amount: paymentAmount,
+          amountUsd: total,
           currency,
           userId: user.id,
           description: `Zhan Store ${isBuyNowCheckout ? 'Buy Now' : 'Cart'} checkout for ${user.name}`,
           customerName: user.name,
           customerEmail: user.email,
-          items: checkoutItems,
+          items: checkoutItems.map((item) => ({
+            ...item,
+            price: Number(convertUsdToCurrency(item.price, currency).toFixed(2)),
+          })),
           successRedirectUrl: `${window.location.origin}/checkout?xendit_status=paid&external_id=${externalId}`,
-          failureRedirectUrl: `${window.location.origin}/checkout?xendit_status=failed&external_id=${externalId}`,
+          failureRedirectUrl: `${window.location.origin}/checkout?xendit_status=cancelled&external_id=${externalId}`,
         }),
       })
 
@@ -147,6 +161,14 @@ export default function CheckoutPage() {
           </Link>
 
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight">Checkout</h1>
+
+          {checkoutError && (
+            <Card className="mt-4 border-destructive/40 bg-destructive/5">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium text-destructive">{checkoutError}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {checkoutItems.length === 0 ? (
             <Card className="mt-8">

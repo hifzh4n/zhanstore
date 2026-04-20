@@ -27,7 +27,8 @@ export async function createXenditInvoice(payload: CreateXenditInvoicePayload) {
     },
     body: JSON.stringify({
       external_id: payload.externalId,
-      amount: Math.round(payload.amount),
+      amount: Number(payload.amount.toFixed(2)),
+      currency: payload.currency,
       description: payload.description,
       success_redirect_url: payload.successRedirectUrl,
       failure_redirect_url: payload.failureRedirectUrl,
@@ -38,7 +39,7 @@ export async function createXenditInvoice(payload: CreateXenditInvoicePayload) {
       items: payload.items.map((item) => ({
         name: item.itemName,
         quantity: item.quantity,
-        price: Math.round(item.price),
+        price: Number(item.price.toFixed(2)),
         category: item.gameName,
       })),
     }),

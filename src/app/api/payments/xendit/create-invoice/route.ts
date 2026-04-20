@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         customer_name: body.customerName,
         external_id: body.externalId,
         items: body.items,
-        total: body.amount,
+        total: body.amountUsd ?? body.amount,
         currency: body.currency,
         source: body.source,
         status: 'Pending',
