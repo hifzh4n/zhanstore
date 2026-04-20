@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const total = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
   const isBuyNowCheckout = Boolean(buyNowItem)
   const [isPaying, setIsPaying] = useState(false)
+  const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
@@ -47,8 +48,9 @@ export default function CheckoutPage() {
       updateOrderByExternalId(externalId, { status: 'Paid' })
       clearCart()
       clearBuyNowItem()
+      setCheckoutError(null)
+      setCheckoutSuccess('Payment successful. Your order has been confirmed.')
       toast.success('Payment confirmed by Xendit.')
-      router.replace('/account')
       return
     }
 
@@ -87,6 +89,7 @@ export default function CheckoutPage() {
 
     setIsPaying(true)
     setCheckoutError(null)
+    setCheckoutSuccess(null)
 
     try {
       const externalId = createExternalId()
@@ -161,6 +164,14 @@ export default function CheckoutPage() {
           </Link>
 
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight">Checkout</h1>
+
+          {checkoutSuccess && (
+            <Card className="mt-4 border-emerald-500/40 bg-emerald-500/5">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium text-emerald-700">{checkoutSuccess}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {checkoutError && (
             <Card className="mt-4 border-destructive/40 bg-destructive/5">
