@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AdminStatCard } from '@/components/admin/stat-card'
-import { getAdminOrders, getAdminSummary } from '@/lib/admin-dashboard'
+import { AdminSetupNotice } from '@/components/admin/setup-notice'
+import { getAdminConfigState, getAdminOrders, getAdminSummary } from '@/lib/admin-dashboard'
 
 function formatUsd(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -12,6 +13,11 @@ function formatUsd(value: number) {
 }
 
 export default async function AdminOverviewPage() {
+  const config = getAdminConfigState()
+  if (!config.ready) {
+    return <AdminSetupNotice missingVars={config.missingVars} />
+  }
+
   const [summary, orders] = await Promise.all([getAdminSummary(), getAdminOrders()])
 
   return (

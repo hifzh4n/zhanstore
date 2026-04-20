@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
+import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getMasterData } from '@/lib/admin-dashboard'
+import { getAdminConfigState, getMasterData } from '@/lib/admin-dashboard'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 
 async function createPublisherAction(formData: FormData) {
@@ -70,6 +71,11 @@ async function toggleRegionAction(formData: FormData) {
 }
 
 export default async function AdminMasterDataPage() {
+  const config = getAdminConfigState()
+  if (!config.ready) {
+    return <AdminSetupNotice missingVars={config.missingVars} />
+  }
+
   const { publishers, regions } = await getMasterData()
 
   return (

@@ -2,6 +2,25 @@ import 'server-only'
 
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 
+export type AdminConfigState = {
+  ready: boolean;
+  missingVars: string[];
+}
+
+export function getAdminConfigState(): AdminConfigState {
+  const missingVars = [
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ? 'NEXT_PUBLIC_SUPABASE_URL' : null,
+    !process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SUPABASE_SERVICE_ROLE_KEY' : null,
+    !process.env.ADMIN_DASHBOARD_USER ? 'ADMIN_DASHBOARD_USER' : null,
+    !process.env.ADMIN_DASHBOARD_PASSWORD ? 'ADMIN_DASHBOARD_PASSWORD' : null,
+  ].filter(Boolean) as string[]
+
+  return {
+    ready: missingVars.length === 0,
+    missingVars,
+  }
+}
+
 export type AdminSummary = {
   productCount: number;
   packageCount: number;

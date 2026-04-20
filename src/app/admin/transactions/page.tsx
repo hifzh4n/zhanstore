@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
+import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getAdminOrders } from '@/lib/admin-dashboard'
+import { getAdminConfigState, getAdminOrders } from '@/lib/admin-dashboard'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 
 async function updateOrderStatusAction(formData: FormData) {
@@ -34,6 +35,11 @@ async function updateOrderStatusAction(formData: FormData) {
 }
 
 export default async function AdminTransactionsPage() {
+  const config = getAdminConfigState()
+  if (!config.ready) {
+    return <AdminSetupNotice missingVars={config.missingVars} />
+  }
+
   const orders = await getAdminOrders()
 
   return (

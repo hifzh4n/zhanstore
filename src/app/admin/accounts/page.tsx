@@ -1,5 +1,6 @@
+import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getAdminAccounts } from '@/lib/admin-dashboard'
+import { getAdminAccounts, getAdminConfigState } from '@/lib/admin-dashboard'
 
 function formatUsd(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -11,6 +12,11 @@ function formatUsd(value: number) {
 }
 
 export default async function AdminAccountsPage() {
+  const config = getAdminConfigState()
+  if (!config.ready) {
+    return <AdminSetupNotice missingVars={config.missingVars} />
+  }
+
   const accounts = await getAdminAccounts()
 
   return (

@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
+import { AdminSetupNotice } from '@/components/admin/setup-notice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getAdminProducts, getMasterData } from '@/lib/admin-dashboard'
+import { getAdminConfigState, getAdminProducts, getMasterData } from '@/lib/admin-dashboard'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 
 async function createProductAction(formData: FormData) {
@@ -102,6 +103,11 @@ async function deletePackageAction(formData: FormData) {
 }
 
 export default async function AdminProductsPage() {
+  const config = getAdminConfigState()
+  if (!config.ready) {
+    return <AdminSetupNotice missingVars={config.missingVars} />
+  }
+
   const [{ publishers, regions }, products] = await Promise.all([getMasterData(), getAdminProducts()])
 
   return (
