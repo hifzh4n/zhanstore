@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, CreditCard, Loader2, ReceiptText } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
@@ -32,9 +32,9 @@ export default function CheckoutPage() {
   const total = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
   const isBuyNowCheckout = Boolean(buyNowItem)
   const [isPaying, setIsPaying] = useState(false)
-  const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const searchParams = useSearchParams()
+  const processedReturnRef = useRef<string | null>(null)
 
   useEffect(() => {
     const paymentStatus = searchParams.get('xendit_status')
@@ -44,29 +44,39 @@ export default function CheckoutPage() {
       return
     }
 
+    const returnKey = `${paymentStatus}:${externalId}`
+    if (processedReturnRef.current === returnKey) {
+      return
+    }
+    processedReturnRef.current = returnKey
+
     if (paymentStatus === 'paid') {
       updateOrderByExternalId(externalId, { status: 'Paid' })
       clearCart()
       clearBuyNowItem()
-      setCheckoutError(null)
-      setCheckoutSuccess('Payment successful. Your order has been confirmed.')
       toast.success('Payment confirmed by Xendit.')
       return
     }
 
     if (paymentStatus === 'failed') {
       updateOrderByExternalId(externalId, { status: 'Failed' })
-      setCheckoutError('Payment was cancelled or failed. Please try again to complete your order.')
       toast.error('Payment was not completed.')
       return
     }
 
     if (paymentStatus === 'cancelled' || paymentStatus === 'expired') {
       updateOrderByExternalId(externalId, { status: 'Failed' })
-      setCheckoutError('Payment was cancelled or expired. Please try again to complete your order.')
       toast.error('Payment was not completed.')
     }
   }, [clearBuyNowItem, clearCart, router, searchParams, updateOrderByExternalId])
+
+  const paymentStatus = searchParams.get('xendit_status')
+  const returnStatusMessage = paymentStatus === 'paid'
+    ? 'Payment successful. Your order has been confirmed.'
+    : paymentStatus === 'failed' || paymentStatus === 'cancelled' || paymentStatus === 'expired'
+      ? 'Payment was cancelled or failed. Please try again to complete your order.'
+      : null
+  const isReturnSuccess = paymentStatus === 'paid'
 
   const handleClearCheckout = () => {
     if (isBuyNowCheckout) {
@@ -89,7 +99,6 @@ export default function CheckoutPage() {
 
     setIsPaying(true)
     setCheckoutError(null)
-    setCheckoutSuccess(null)
 
     try {
       const externalId = createExternalId()
@@ -165,10 +174,10 @@ export default function CheckoutPage() {
 
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight">Checkout</h1>
 
-          {checkoutSuccess && (
-            <Card className="mt-4 border-emerald-500/40 bg-emerald-500/5">
+          {!checkoutError && returnStatusMessage && (
+            <Card className={`mt-4 ${isReturnSuccess ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-destructive/40 bg-destructive/5'}`}>
               <CardContent className="p-4">
-                <p className="text-sm font-medium text-emerald-700">{checkoutSuccess}</p>
+                <p className={`text-sm font-medium ${isReturnSuccess ? 'text-emerald-700' : 'text-destructive'}`}>{returnStatusMessage}</p>
               </CardContent>
             </Card>
           )}
