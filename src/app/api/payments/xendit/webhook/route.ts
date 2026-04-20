@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+import { sendOrderStatusEmail } from '@/lib/order-email'
 
 type XenditWebhookPayload = {
   external_id?: string;
@@ -39,7 +40,17 @@ export async function POST(request: Request) {
 
     const nextStatus = (payload.status ?? '').toUpperCase() === 'PAID' ? 'Paid' : (payload.status ?? '').toUpperCase() === 'EXPIRED' ? 'Failed' : 'Pending'
 
-    const { error } = await supabaseAdmin
+    const { data: existingOrder, error: existingOrderError } = await supabaseAdmin
+      .from('orders')
+      .select('status,email,customer_name,external_id,total,currency,paid_at')
+      .eq('external_id', externalId)
+      .maybeSingle()
+
+    if (existingOrderError) {
+      return NextResponse.json({ error: existingOrderError.message }, { status: 500 })
+    }
+
+    const { error, data: updatedOrder } = await supabaseAdmin
       .from('orders')
       .update({
         status: nextStatus,
@@ -47,9 +58,26 @@ export async function POST(request: Request) {
         xendit_payment_id: payload.payment_id ?? payload.paymentId ?? payload.id ?? null,
       })
       .eq('external_id', externalId)
+      .select('status,email,customer_name,external_id,total,currency,paid_at')
+      .single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const isFinalStatus = nextStatus === 'Paid' || nextStatus === 'Failed'
+    const statusChanged = existingOrder?.status !== nextStatus
+
+    if (isFinalStatus && statusChanged && updatedOrder?.email && updatedOrder?.customer_name) {
+      await sendOrderStatusEmail({
+        email: updatedOrder.email,
+        customerName: updatedOrder.customer_name,
+        externalId: updatedOrder.external_id,
+        status: nextStatus,
+        currency: updatedOrder.currency,
+        totalUsd: Number(updatedOrder.total ?? 0),
+        paidAt: updatedOrder.paid_at,
+      })
     }
 
     return NextResponse.json({ ok: true })

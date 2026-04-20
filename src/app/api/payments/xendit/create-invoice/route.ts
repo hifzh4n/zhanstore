@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createXenditInvoice } from '@/lib/xendit'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+import { sendOrderStatusEmail } from '@/lib/order-email'
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +46,15 @@ export async function POST(request: Request) {
           .from('orders')
           .update({ status: 'Failed' })
           .eq('external_id', body.externalId)
+
+        await sendOrderStatusEmail({
+          email: body.customerEmail,
+          customerName: body.customerName,
+          externalId: body.externalId,
+          status: 'Failed',
+          currency: body.currency,
+          totalUsd: body.amountUsd ?? body.amount,
+        })
       }
 
       throw error
